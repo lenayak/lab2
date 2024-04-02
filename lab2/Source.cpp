@@ -5,31 +5,29 @@
 #include <fstream>
 #include <sstream>
 #include <regex>
+#include <omp.h>
 
 using namespace std;
 
-void write_to_file(int** matrix, int size, string filename)
+int** create_random_matrix(const int size)
 {
-	ofstream fout(filename);
-	if (!fout.is_open()) return;
+	int** matrix = new int* [size];
+	for (int i = 0; i < size; i++)
+		matrix[i] = new int[size];
 	for (int i = 0; i < size; i++)
 	{
 		for (int j = 0; j < size; j++)
-		{
-			fout << matrix[i][j] << "  ";
-		}
-		fout << endl;
+			matrix[i][j] = rand() % 1000;
 	}
-	fout.close();
-	return;
+	return matrix;
 }
 
-void write_to_file(int** matrix, int size, string filename, unsigned int time)
+void write_to_file(int** matrix, int size, string filename, double time)
 {
 	ofstream fout(filename);
 	if (!fout.is_open()) return;
 	fout << "Size: " << size << endl;
-	fout << "Time: " << time << " milliseconds" << endl;
+	fout << "Time: " << time << endl;
 	for (int i = 0; i < size; i++)
 	{
 		for (int j = 0; j < size; j++)
@@ -42,13 +40,13 @@ void write_to_file(int** matrix, int size, string filename, unsigned int time)
 	return;
 }
 
-void write_to_file(const int* sizes, string filename, unsigned int* times)
+void write_to_file(const int* sizes, string filename, double* times)
 {
 	ofstream fout(filename);
 	if (!fout.is_open()) return;
 	for (int i = 0; i < 5; i++)
 	{
-		fout << "Size: " << sizes[i] << "\t Time: " << times[i] << " milliseconds" << endl;
+		fout << "Size: " << sizes[i] << "\t Time: " << times[i] << endl;
 	}
 	fout.close();
 	return;
@@ -81,8 +79,63 @@ int** read_matrix(string filename)
 	return matrix;
 }
 
+int** multiply_matrix(int** a, int** b, const int size)
+{
+	int** c = new int* [size];
+	for (int i = 0; i < size; i++)
+		c[i] = new int[size];
+	int i, j, k;
+#pragma omp parallel for shared(a, b, c) private(i, j, k)
+	for (i = 0; i < size; i++)
+	{
+		for (j = 0; j < size; j++)
+		{
+			c[i][j] = 0;
+			for (int k = 0; k < size; k++)
+				c[i][j] += a[i][k] * b[k][j];
+		}
+	}
+	return c;
+}
+
 int main()
 {
+	srand(time(nullptr));
+
+	const int sizes[5] = { 100, 300, 500, 700,1000 };
+	for (int i = 0; i < 5; i++)
+	{
+		string filenane_matrix_a = "matrix_a_" + to_string(sizes[i]) + ".txt";
+		string filename_matrix_b = "matrix_b_" + to_string(sizes[i]) + ".txt";
+		string filename_result = "matrix_result_omp_" + to_string(sizes[i]) + ".txt";
+		int** a = read_matrix(filenane_matrix_a);
+		int** b = read_matrix(filename_matrix_b);
+		double t_start, t_end, time;
+		t_start = omp_get_wtime();
+		int** result = multiply_matrix(a, b, sizes[i]);
+		t_end = omp_get_wtime();
+		time = t_end - t_start;
+		write_to_file(result, sizes[i], filename_result, time);
+	}
+
+	string filename_times = "average_omp_times.txt";
+	double average_times[5] = { 0,0,0,0,0 };
+	for (int i = 0; i < 5; i++)
+	{
+		for (int j = 0; j < 10; j++)
+		{
+			int** a = create_random_matrix(sizes[i]);
+			int** b = create_random_matrix(sizes[i]);
+			double t_start, t_end, time;
+			t_start = omp_get_wtime();
+			multiply_matrix(a, b, sizes[i]);
+			t_end = omp_get_wtime();
+			time = t_end - t_start;
+			average_times[i] += time;
+		}
+		average_times[i] / 10;
+	}
+	write_to_file(sizes, filename_times, average_times);
 
 	return 0;
 }
