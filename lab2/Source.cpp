@@ -84,15 +84,27 @@ int** multiply_matrix(int** a, int** b, const int size)
 	int** c = new int* [size];
 	for (int i = 0; i < size; i++)
 		c[i] = new int[size];
-	int i, j, k;
-#pragma omp parallel for shared(a, b, c) private(i, j, k)
-	for (i = 0; i < size; i++)
+
+	for (int i = 0; i < size; i++)
 	{
-		for (j = 0; j < size; j++)
+		for (int j = 0; j < size; j++)
 		{
 			c[i][j] = 0;
-			for (int k = 0; k < size; k++)
-				c[i][j] += a[i][k] * b[k][j];
+		}
+	}
+	int threads;
+#pragma omp parallel num_threads(16) shared(threads)
+	{
+#pragma omp for  
+		for (int i = 0; i < size; ++i)
+		{
+			for (int j = 0; j < size; ++j)
+			{
+				for (int k = 0; k < size; ++k)
+				{
+					c[i][j] += a[i][k] * b[k][j];
+				}
+			}
 		}
 	}
 	return c;
@@ -118,7 +130,7 @@ int main()
 		write_to_file(result, sizes[i], filename_result, time);
 	}
 
-	string filename_times = "average_omp_times.txt";
+	string filename_times = "average_times_16_threads.txt";
 	double average_times[5] = { 0,0,0,0,0 };
 	for (int i = 0; i < 5; i++)
 	{

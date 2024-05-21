@@ -1,0 +1,5 @@
+Size: 100	 Time: 0.0380271
+Size: 300	 Time: 1.17552
+Size: 500	 Time: 4.14293
+Size: 700	 Time: 12.4791
+Size: 1000	 Time: 45.9234
